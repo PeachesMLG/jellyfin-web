@@ -17,6 +17,7 @@ class HtmlVideoPlayer extends NoActivePlayer {
         this.isPlayerActive = false;
         this.savedPlaybackRate = 1.0;
         this.minBufferingThresholdMillis = 3000;
+        this.hlsEventsBound = false;
 
         if (player.currentTimeAsync) {
             /**
@@ -85,6 +86,8 @@ class HtmlVideoPlayer extends NoActivePlayer {
         Events.on(this.player, 'playing', this._onPlaying);
         Events.on(this.player, 'waiting', this._onWaiting);
 
+        this.bindHlsEvents();
+
         this.savedPlaybackRate = this.player.getPlaybackRate();
     }
 
@@ -96,13 +99,41 @@ class HtmlVideoPlayer extends NoActivePlayer {
 
         Events.off(this.player, 'playbackstart', this._onPlaybackStart);
         Events.off(this.player, 'playbackstop', this._onPlaybackStop);
-        Events.off(this.player, 'unpause', this._onPlayerUnpause);
-        Events.off(this.player, 'pause', this._onPlayerPause);
+        Events.off(this.player, 'unpause', this._onUnpause);
+        Events.off(this.player, 'pause', this._onPause);
         Events.off(this.player, 'timeupdate', this._onTimeUpdate);
         Events.off(this.player, 'playing', this._onPlaying);
         Events.off(this.player, 'waiting', this._onWaiting);
 
         this.player.setPlaybackRate(this.savedPlaybackRate);
+    }
+
+    bindHlsEvents() {
+        if (this.hlsEventsBound) return;
+
+        const hlsPlayer = this.player._hlsPlayer;
+        if (hlsPlayer && window.Hls) {
+            const self = this;
+
+            this.hlsErrorHandler = (event, data) => {
+                if (data.details === 'bufferStalledError' || data.details === 'bufferNudgeOnStall') {
+                    self._onWaiting();
+                }
+            };
+
+            this.hlsBufferHandler = () => {
+                if (self.notifyBuffering) {
+                    clearTimeout(self.notifyBuffering);
+                    self.notifyBuffering = null;
+                    self._onPlaying();
+                }
+            };
+
+            hlsPlayer.on(window.Hls.Events.ERROR, this.hlsErrorHandler);
+            hlsPlayer.on(window.Hls.Events.BUFFER_APPENDED, this.hlsBufferHandler);
+
+            this.hlsEventsBound = true;
+        }
     }
 
     /**
