@@ -53,6 +53,15 @@ class Controller {
     }
 
     /**
+     * Sets playback speed in SyncPlay group.
+     * @param {number} speed The playback speed to set.
+     */
+    setPlaybackSpeed(speed) {
+        // TODO
+        console.log("Sending PlaybackSpeed");
+    }
+
+    /**
      * Seeks playback to specified position in SyncPlay group.
      * @param {number} positionTicks The position.
      */

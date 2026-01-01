@@ -77,6 +77,10 @@ class HtmlVideoPlayer extends NoActivePlayer {
             }, self.minBufferingThresholdMillis);
         };
 
+        this._onRateChange = () => {
+            self.onRateChange();
+        };
+
         Events.on(this.player, 'playbackstart', this._onPlaybackStart);
         Events.on(this.player, 'playbackstop', this._onPlaybackStop);
         Events.on(this.player, 'unpause', this._onUnpause);
@@ -84,6 +88,7 @@ class HtmlVideoPlayer extends NoActivePlayer {
         Events.on(this.player, 'timeupdate', this._onTimeUpdate);
         Events.on(this.player, 'playing', this._onPlaying);
         Events.on(this.player, 'waiting', this._onWaiting);
+        Events.on(this.player, 'ratechange', this._onRateChange);
 
         this.savedPlaybackRate = this.player.getPlaybackRate();
     }
@@ -101,6 +106,7 @@ class HtmlVideoPlayer extends NoActivePlayer {
         Events.off(this.player, 'timeupdate', this._onTimeUpdate);
         Events.off(this.player, 'playing', this._onPlaying);
         Events.off(this.player, 'waiting', this._onWaiting);
+        Events.off(this.player, 'ratechange', this._onRateChange);
 
         this.player.setPlaybackRate(this.savedPlaybackRate);
     }

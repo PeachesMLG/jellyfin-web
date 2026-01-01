@@ -136,6 +136,14 @@ class NoActivePlayer extends SyncPlay.Players.GenericPlayer {
     }
 
     /**
+     * Handles playback speed change requests.
+     */
+    setPlaybackSpeedRequest(speed) {
+        const controller = syncPlayManager.getController();
+        controller.setPlaybackSpeed(speed);
+    }
+
+    /**
      * Overrides PlaybackManager's seek method.
      */
     seekRequest(positionTicks) {

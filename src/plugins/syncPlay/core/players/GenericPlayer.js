@@ -90,6 +90,14 @@ class GenericPlayer {
     }
 
     /**
+     * Called when playback rate changes.
+     */
+    onRateChange() {
+        const newRate = this.player.getPlaybackRate();
+        Events.trigger(this.manager, 'ratechange', [newRate]);
+    }
+
+    /**
      * Called on playback progress.
      * @param {Object} event The time update event.
      * @param {Object} timeUpdateData The time update data.
