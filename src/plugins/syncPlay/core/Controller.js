@@ -36,16 +36,14 @@ class Controller {
      * Unpauses playback in SyncPlay group.
      */
     unpause() {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlayUnpause();
+        this.manager.getSyncPlayApi()?.syncPlayUnpause();
     }
 
     /**
      * Pauses playback in SyncPlay group.
      */
     pause() {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlayPause();
+        this.manager.getSyncPlayApi()?.syncPlayPause();
 
         // Pause locally as well, to give the user some little control.
         const playerWrapper = this.manager.getPlayerWrapper();
@@ -57,9 +55,10 @@ class Controller {
      * @param {number} positionTicks The position.
      */
     seek(positionTicks) {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlaySeek({
-            PositionTicks: positionTicks
+        this.manager.getSyncPlayApi()?.syncPlaySeek({
+            seekRequestDto: {
+                PositionTicks: positionTicks
+            }
         });
     }
 
@@ -68,13 +67,18 @@ class Controller {
      * @param {Object} options The play data.
      */
     play(options) {
+        const syncPlayApi = this.manager.getSyncPlayApi();
         const apiClient = this.manager.getApiClient();
+        if (!syncPlayApi || !apiClient) return;
+
         const sendPlayRequest = (items) => {
             const queue = items.map(item => item.Id);
-            return apiClient.requestSyncPlaySetNewQueue({
-                PlayingQueue: queue,
-                PlayingItemPosition: options.startIndex ? options.startIndex : 0,
-                StartPositionTicks: options.startPositionTicks ? options.startPositionTicks : 0
+            return syncPlayApi.syncPlaySetNewQueue({
+                playRequestDto: {
+                    PlayingQueue: queue,
+                    PlayingItemPosition: options.startIndex ? options.startIndex : 0,
+                    StartPositionTicks: options.startPositionTicks ? options.startPositionTicks : 0
+                }
             });
         };
 
@@ -94,9 +98,10 @@ class Controller {
      * @param {string} playlistItemId The item playlist identifier.
      */
     setCurrentPlaylistItem(playlistItemId) {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlaySetPlaylistItem({
-            PlaylistItemId: playlistItemId
+        this.manager.getSyncPlayApi()?.syncPlaySetPlaylistItem({
+            setPlaylistItemRequestDto: {
+                PlaylistItemId: playlistItemId
+            }
         });
     }
 
@@ -105,10 +110,11 @@ class Controller {
      * @param {Array} clearPlayingItem Whether to remove the playing item as well.
      */
     clearPlaylist(clearPlayingItem = false) {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlayRemoveFromPlaylist({
-            ClearPlaylist: true,
-            ClearPlayingItem: clearPlayingItem
+        this.manager.getSyncPlayApi()?.syncPlayRemoveFromPlaylist({
+            removeFromPlaylistRequestDto: {
+                ClearPlaylist: true,
+                ClearPlayingItem: clearPlayingItem
+            }
         });
     }
 
@@ -117,9 +123,10 @@ class Controller {
      * @param {Array} playlistItemIds The items to remove.
      */
     removeFromPlaylist(playlistItemIds) {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlayRemoveFromPlaylist({
-            PlaylistItemIds: playlistItemIds
+        this.manager.getSyncPlayApi()?.syncPlayRemoveFromPlaylist({
+            removeFromPlaylistRequestDto: {
+                PlaylistItemIds: playlistItemIds
+            }
         });
     }
 
@@ -129,10 +136,11 @@ class Controller {
      * @param {number} newIndex The new position.
      */
     movePlaylistItem(playlistItemId, newIndex) {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlayMovePlaylistItem({
-            PlaylistItemId: playlistItemId,
-            NewIndex: newIndex
+        this.manager.getSyncPlayApi()?.syncPlayMovePlaylistItem({
+            movePlaylistItemRequestDto: {
+                PlaylistItemId: playlistItemId,
+                NewIndex: newIndex
+            }
         });
     }
 
@@ -142,13 +150,18 @@ class Controller {
      * @param {string} mode The queue mode, optional.
      */
     queue(options, mode = 'Queue') {
+        const syncPlayApi = this.manager.getSyncPlayApi();
         const apiClient = this.manager.getApiClient();
+        if (!syncPlayApi || !apiClient) return;
+
         if (options.items) {
             Helper.translateItemsForPlayback(apiClient, options.items, options).then((items) => {
                 const itemIds = items.map(item => item.Id);
-                apiClient.requestSyncPlayQueue({
-                    ItemIds: itemIds,
-                    Mode: mode
+                syncPlayApi.syncPlayQueue({
+                    queueRequestDto: {
+                        ItemIds: itemIds,
+                        Mode: mode
+                    }
                 });
             });
         } else {
@@ -157,9 +170,11 @@ class Controller {
             }).then(function (result) {
                 Helper.translateItemsForPlayback(apiClient, result.Items, options).then((items) => {
                     const itemIds = items.map(item => item.Id);
-                    apiClient.requestSyncPlayQueue({
-                        ItemIds: itemIds,
-                        Mode: mode
+                    syncPlayApi.syncPlayQueue({
+                        queueRequestDto: {
+                            ItemIds: itemIds,
+                            Mode: mode
+                        }
                     });
                 });
             });
@@ -178,9 +193,10 @@ class Controller {
      * Plays next item from playlist in SyncPlay group.
      */
     nextItem() {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlayNextItem({
-            PlaylistItemId: this.manager.getQueueCore().getCurrentPlaylistItemId()
+        this.manager.getSyncPlayApi()?.syncPlayNextItem({
+            nextItemRequestDto: {
+                PlaylistItemId: this.manager.getQueueCore().getCurrentPlaylistItemId()
+            }
         });
     }
 
@@ -188,9 +204,10 @@ class Controller {
      * Plays previous item from playlist in SyncPlay group.
      */
     previousItem() {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlayPreviousItem({
-            PlaylistItemId: this.manager.getQueueCore().getCurrentPlaylistItemId()
+        this.manager.getSyncPlayApi()?.syncPlayPreviousItem({
+            previousItemRequestDto: {
+                PlaylistItemId: this.manager.getQueueCore().getCurrentPlaylistItemId()
+            }
         });
     }
 
@@ -199,9 +216,10 @@ class Controller {
      * @param {string} mode The repeat mode.
      */
     setRepeatMode(mode) {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlaySetRepeatMode({
-            Mode: mode
+        this.manager.getSyncPlayApi()?.syncPlaySetRepeatMode({
+            setRepeatModeRequestDto: {
+                Mode: mode
+            }
         });
     }
 
@@ -210,9 +228,10 @@ class Controller {
      * @param {string} mode The shuffle mode.
      */
     setShuffleMode(mode) {
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlaySetShuffleMode({
-            Mode: mode
+        this.manager.getSyncPlayApi()?.syncPlaySetShuffleMode({
+            setShuffleModeRequestDto: {
+                Mode: mode
+            }
         });
     }
 
@@ -223,9 +242,10 @@ class Controller {
         let mode = this.manager.getQueueCore().getShuffleMode();
         mode = mode === 'Sorted' ? 'Shuffle' : 'Sorted';
 
-        const apiClient = this.manager.getApiClient();
-        apiClient.requestSyncPlaySetShuffleMode({
-            Mode: mode
+        this.manager.getSyncPlayApi()?.syncPlaySetShuffleMode({
+            setShuffleModeRequestDto: {
+                Mode: mode
+            }
         });
     }
 }
