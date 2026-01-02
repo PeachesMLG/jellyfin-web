@@ -53,8 +53,8 @@ class Controller {
     }
 
     /**
-     * Sets playback speed in SyncPlay group.
-     * @param {number} speed The playback speed to set.
+     * Sets the playback speed in SyncPlay group.
+     * @param {number} speed The playback speed.
      */
     setPlaybackSpeed(speed) {
         this.manager.getSyncPlayApi()?.syncPlaySetPlaybackSpeed({

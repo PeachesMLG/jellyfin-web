@@ -231,7 +231,11 @@ class PlaybackCore {
                         }
                         break;
                     case 'SetPlaybackSpeed':
-                        this.scheduleSetPlaybackSpeed(command.When, command.PlaybackSpeed);
+                        // Check if current playback speed matches requested speed.
+                        const playerWrapper = this.manager.getPlayerWrapper();
+                        if (playerWrapper.hasPlaybackRate() && playerWrapper.getPlaybackRate() !== command.PlaybackSpeed) {
+                            this.scheduleSetPlaybackSpeed(command.When, command.PlaybackSpeed);
+                        }
                         break;
                     default:
                         console.error('SyncPlay applyCommand: command is not recognised:', command);
@@ -300,7 +304,11 @@ class PlaybackCore {
 
             this.scheduledCommandTimeout = setTimeout(() => {
                 this.localUnpause();
-                this.localPlaybackSpeed(playbackSpeed);
+
+                const playerWrapper = this.manager.getPlayerWrapper();
+                if (playerWrapper.hasPlaybackRate() && playerWrapper.getPlaybackRate() !== playbackSpeed) {
+                    this.localSetPlaybackSpeed(playbackSpeed);
+                }
                 Events.trigger(this.manager, 'notify-osd', ['unpause']);
 
                 this.syncTimeout = setTimeout(() => {
@@ -316,7 +324,9 @@ class PlaybackCore {
                 this.localSeek(serverPositionTicks);
             });
             this.localUnpause();
-            this.localPlaybackSpeed(playbackSpeed);
+            if (playerWrapper.hasPlaybackRate() && playerWrapper.getPlaybackRate() !== playbackSpeed) {
+                this.localSetPlaybackSpeed(playbackSpeed);
+            }
             setTimeout(() => {
                 Events.trigger(this.manager, 'notify-osd', ['unpause']);
             }, 100);
@@ -420,26 +430,27 @@ class PlaybackCore {
 
     /**
      * Schedules a playback speed change on the player at the specified clock time.
-     * @param {Date} setSpeedAtTime The server's UTC time at which to set playback speed.
+     * @param {Date} changeAtTime The server's UTC time at which to change playback speed.
      * @param {number} playbackSpeed The playback speed to set.
      */
-    scheduleSetPlaybackSpeed(setSpeedAtTime, playbackSpeed) {
+    scheduleSetPlaybackSpeed(changeAtTime, playbackSpeed) {
         this.clearScheduledCommand();
         const currentTime = new Date();
-        const setSpeedAtTimeLocal = this.timeSyncCore.remoteDateToLocal(setSpeedAtTime);
+        const changeAtTimeLocal = this.timeSyncCore.remoteDateToLocal(changeAtTime);
 
         const callback = () => {
-            this.localPlaybackSpeed(playbackSpeed);
+            this.localSetPlaybackSpeed(playbackSpeed);
+            Events.trigger(this.manager, 'notify-osd', ['playbackspeed', playbackSpeed]);
         };
 
-        if (setSpeedAtTimeLocal > currentTime) {
-            const setSpeedTimeout = setSpeedAtTimeLocal - currentTime;
-            this.scheduledCommandTimeout = setTimeout(callback, setSpeedTimeout);
+        if (changeAtTimeLocal > currentTime) {
+            const changeTimeout = changeAtTimeLocal - currentTime;
+            this.scheduledCommandTimeout = setTimeout(callback, changeTimeout);
 
-            console.debug('Scheduled playback speed change in', setSpeedTimeout / 1000.0, 'seconds.');
+            console.debug('Scheduled playback speed change to', playbackSpeed, 'in', changeTimeout / 1000.0, 'seconds.');
         } else {
             callback();
-            console.debug('SyncPlay scheduleSetPlaybackSpeed: now.');
+            console.debug('SyncPlay scheduleSetPlaybackSpeed: now to', playbackSpeed);
         }
     }
 
@@ -516,19 +527,21 @@ class PlaybackCore {
     }
 
     /**
-     * Sets the group playback speed on the local player.
+     * Sets the playback speed of the local player.
      * @param {number} playbackSpeed The playback speed to set.
      */
-    localPlaybackSpeed(playbackSpeed) {
+    localSetPlaybackSpeed(playbackSpeed) {
+        // Ignore command when no player is active.
         if (!this.manager.isPlaybackActive()) {
-            console.debug('SyncPlay setGroupPlaybackSpeed: no active player!');
+            console.debug('SyncPlay localSetPlaybackSpeed: no active player!');
             return;
         }
 
         const playerWrapper = this.manager.getPlayerWrapper();
-        if (playerWrapper.hasPlaybackRate() && playerWrapper.getPlaybackRate() !== playbackSpeed) {
-            playerWrapper.setPlaybackRate(playbackSpeed);
-            console.debug(`SyncPlay setGroupPlaybackSpeed: set to ${playbackSpeed}x`);
+        if (playerWrapper.hasPlaybackRate()) {
+            return playerWrapper.localSetPlaybackRate(playbackSpeed);
+        } else {
+            console.debug('SyncPlay localSetPlaybackSpeed: player does not support playback rate changes.');
         }
     }
 
@@ -583,11 +596,8 @@ class PlaybackCore {
         // Get current PositionTicks.
         const currentPositionTicks = currentPosition * Helper.TicksPerMillisecond;
 
-        // Estimate PositionTicks on server, accounting for group playback speed.
-        const groupPlaybackSpeed = this.manager.getCurrentPlaybackSpeed();
-        const timeDiff = currentTime.getTime() - lastCommand.When.getTime();
-        const speedAdjustedTimeDiff = timeDiff * groupPlaybackSpeed;
-        const serverPositionTicks = lastCommand.PositionTicks + (speedAdjustedTimeDiff * Helper.TicksPerMillisecond);
+        // Estimate PositionTicks on server.
+        const serverPositionTicks = this.estimateCurrentTicks(lastCommand.PositionTicks, lastCommand.When, currentTime);
 
         // Measure delay that needs to be recovered.
         // Diff might be caused by the player internally starting the playback.
@@ -616,9 +626,8 @@ class PlaybackCore {
                     speedToSyncTime = Math.abs(diffMillis) / (1.0 - MinSpeed);
                 }
 
-                // SpeedToSync strategy - adjust relative to group playback speed.
-                const groupPlaybackSpeed = this.manager.getCurrentPlaybackSpeed();
-                const speed = groupPlaybackSpeed + (diffMillis / speedToSyncTime);
+                // SpeedToSync strategy.
+                const speed = 1 + diffMillis / speedToSyncTime;
 
                 if (speed <= 0) {
                     console.error('SyncPlay error: speed should not be negative!', speed, diffMillis, speedToSyncTime);
@@ -630,7 +639,7 @@ class PlaybackCore {
                 this.manager.showSyncIcon(`SpeedToSync (x${speed.toFixed(2)})`);
 
                 this.syncTimeout = setTimeout(() => {
-                    playerWrapper.setPlaybackRate(groupPlaybackSpeed);
+                    playerWrapper.setPlaybackRate(1.0);
                     this.syncEnabled = true;
                     this.manager.clearSyncIcon();
                 }, speedToSyncTime);

@@ -1976,7 +1976,6 @@ export class HtmlVideoPlayer {
         const mediaElement = this.#mediaElement;
         if (mediaElement) {
             mediaElement.playbackRate = value;
-            Events.trigger(this, 'ratechange');
         }
     }
 

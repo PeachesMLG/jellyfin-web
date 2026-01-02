@@ -90,14 +90,6 @@ class GenericPlayer {
     }
 
     /**
-     * Called when playback rate changes.
-     */
-    onRateChange() {
-        const newRate = this.player.getPlaybackRate();
-        Events.trigger(this.manager, 'ratechange', [newRate]);
-    }
-
-    /**
      * Called on playback progress.
      * @param {Object} event The time update event.
      * @param {Object} timeUpdateData The time update data.
@@ -177,6 +169,15 @@ class GenericPlayer {
      */
     getPlaybackRate() {
         return 1.0;
+    }
+
+    /**
+     * Sets the playback rate locally.
+     * @param {number} value The playback rate.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    localSetPlaybackRate(value) {
+        // Override
     }
 
     /**

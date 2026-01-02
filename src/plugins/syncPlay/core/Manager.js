@@ -39,7 +39,6 @@ class Manager {
         this.queuedCommand = null; // Queued playback command, applied when SyncPlay is ready.
         this.followingGroupPlayback = true; // Follow or ignore group playback.
         this.lastPlaybackCommand = null; // Last received playback command from server, tracks state of group.
-        this.currentPlaybackSpeed = 1.0; // Current group playback speed.
 
         this.currentPlayer = null;
         this.playerWrapper = null;
@@ -68,15 +67,6 @@ class Manager {
                 this.getApiClient().sendSyncPlayPing({
                     Ping: ping
                 });
-            }
-        });
-
-        Events.on(this, 'ratechange', (event, newRate) => {
-            console.warn(`SyncPlay ratechange: ${JSON.stringify(event)} - ${newRate}`);
-            // Handle playback rate change - only send to server if not already setting speed
-            if (this.isSyncPlayEnabled() && this.isPlaybackActive() && !this.settingPlaybackSpeed) {
-                const controller = this.getController();
-                controller.setPlaybackSpeed(newRate);
             }
         });
     }
@@ -156,14 +146,6 @@ class Manager {
      */
     getLastPlaybackCommand() {
         return this.lastPlaybackCommand;
-    }
-
-    /**
-     * Gets the current playback speed.
-     * @returns {number} The current playback speed.
-     */
-    getCurrentPlaybackSpeed() {
-        return this.currentPlaybackSpeed;
     }
 
     /**
@@ -284,7 +266,6 @@ class Manager {
             cmd.When = new Date(cmd.When);
             cmd.EmittedAt = new Date(cmd.EmittedAt);
             cmd.PositionTicks = cmd.PositionTicks ? parseInt(cmd.PositionTicks, 10) : null;
-            cmd.PlaybackSpeed = cmd.PlaybackSpeed || 1.0;
         }
 
         if (!this.isSyncPlayEnabled()) {
@@ -304,10 +285,6 @@ class Manager {
         }
 
         this.lastPlaybackCommand = cmd;
-
-        if (cmd.PlaybackSpeed !== undefined) {
-            this.currentPlaybackSpeed = cmd.PlaybackSpeed;
-        }
 
         if (!this.isPlaybackActive()) {
             console.debug('SyncPlay processCommand: no active player!');
