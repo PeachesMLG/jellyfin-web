@@ -11,6 +11,8 @@ import Controller from './Controller';
 import toast from '../../../components/toast/toast';
 import globalize from '../../../lib/globalize';
 import Events from '../../../utils/events.ts';
+import { toApi } from '../../../utils/jellyfin-apiclient/compat';
+import { getSyncPlayApi } from '@jellyfin/sdk/lib/utils/api/sync-play-api';
 
 /**
  * Class that manages the SyncPlay feature.
@@ -70,8 +72,9 @@ class Manager {
         });
 
         Events.on(this, 'ratechange', (event, newRate) => {
-            // Handle playback rate change
-            if (this.isSyncPlayEnabled() && this.isPlaybackActive()) {
+            console.warn(`SyncPlay ratechange: ${JSON.stringify(event)} - ${newRate}`);
+            // Handle playback rate change - only send to server if not already setting speed
+            if (this.isSyncPlayEnabled() && this.isPlaybackActive() && !this.settingPlaybackSpeed) {
                 const controller = this.getController();
                 controller.setPlaybackSpeed(newRate);
             }
@@ -136,6 +139,15 @@ class Manager {
      */
     getApiClient() {
         return this.apiClient;
+    }
+
+    /**
+     * Gets the SyncPlay API instance from the new SDK.
+     * @returns {Object|null} The SyncPlay API instance, or null if no ApiClient is available.
+     */
+    getSyncPlayApi() {
+        const api = toApi(this.apiClient);
+        return getSyncPlayApi(api);
     }
 
     /**

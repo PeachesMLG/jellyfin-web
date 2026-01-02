@@ -57,8 +57,11 @@ class Controller {
      * @param {number} speed The playback speed to set.
      */
     setPlaybackSpeed(speed) {
-        // TODO
-        console.log("Sending PlaybackSpeed");
+        this.manager.getSyncPlayApi()?.syncPlaySetPlaybackSpeed({
+            setPlaybackSpeedRequestDto: {
+                PlaybackSpeed: speed
+            }
+        })
     }
 
     /**
